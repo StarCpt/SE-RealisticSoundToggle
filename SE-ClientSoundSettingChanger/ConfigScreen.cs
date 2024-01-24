@@ -16,14 +16,14 @@ namespace SE_RealisticSoundToggle
 
         private MyGuiControlCheckbox _overrideSetting, _enableRealistic;
 
-        private Config _config;
-        private string _configPath;
+        private readonly Config _config;
+        private readonly string _configPath;
 
         public ConfigScreen(Config config, string configPath) :
-            base(new Vector2(0.5f),
-                MyGuiConstants.SCREEN_BACKGROUND_FADE_BLANK_DARK_PROGRESS_SCREEN,
-                new Vector2(0.5f),
-                true,
+            base(new Vector2(0.5f, 0.5f),
+                MyGuiConstants.SCREEN_BACKGROUND_COLOR,
+                new Vector2(0.5f, 0.5f),
+                false,
                 null,
                 MySandboxGame.Config.UIBkOpacity,
                 MySandboxGame.Config.UIOpacity)
@@ -32,32 +32,51 @@ namespace SE_RealisticSoundToggle
             _configPath = configPath;
         }
 
+        public override void LoadContent()
+        {
+            base.LoadContent();
+
+            RecreateControls(true);
+        }
+
         public override void RecreateControls(bool constructor)
         {
             base.RecreateControls(constructor);
 
             AddCaption("RealisticSoundToggle Config");
 
-            var grid = new UniformGrid(2, 2, new Vector2(0.2f, 0.05f));
+            bool isIngame = SessionComp.IsSessionRealisticSound != null;
 
-            grid.Add(new MyGuiControlLabel(text: "IsSessionRealisticSound:", originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 0, 0);
-            grid.Add(new MyGuiControlLabel(text: Session.IsSessionRealisticSound.ToString(), originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 1, 0);
+            var grid = new UniformGrid(2, 3, new Vector2(0.2f, 0.05f));
+
+            grid.Add(new MyGuiControlLabel(text: "World Setting:", originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 0, 0);
+            grid.Add(new MyGuiControlLabel(text: SessionComp.IsSessionRealisticSound != null ? (SessionComp.IsSessionRealisticSound.Value ? "Realistic" : "Arcade") : "Not Ingame", originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 1, 0);
 
             grid.Add(new MyGuiControlLabel(text: "Override World Setting:", originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 0, 1);
-            grid.Add(_overrideSetting = new MyGuiControlCheckbox(isChecked: _config.OverrideWorldSound, originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 1, 1);
+            grid.Add(_overrideSetting = new MyGuiControlCheckbox(
+                isChecked: _config.OverrideWorldSound,
+                originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER,
+                toolTip: !isIngame ? "" : "You can only change this on the main menu."), 1, 1);
+            _overrideSetting.Enabled = !isIngame;
 
             grid.Add(new MyGuiControlLabel(text: "Enable Realistic Sound:", originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 0, 2);
-            grid.Add(_enableRealistic = new MyGuiControlCheckbox(isChecked: _config.EnableRealisticSound, originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER), 1, 2);
+            grid.Add(_enableRealistic = new MyGuiControlCheckbox(
+                isChecked: _config.EnableRealisticSound,
+                originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER,
+                toolTip: !isIngame ? "On = Realistic Sound\nOff = Arcade Sound" : "You can only change this on the main menu."), 1, 2);
+            _enableRealistic.Enabled = !isIngame;
+
+            grid.AddItemsTo(Controls, new Vector2(-0.04f, 0), false);
 
             float btnYPos = (Size.Value.Y * 0.5f) - (MyGuiConstants.SCREEN_CAPTION_DELTA_Y / 2f);
-
             MyGuiControlButton saveBtn = new MyGuiControlButton(
-                new Vector2(-0.1f, btnYPos),
+                new Vector2(0f, btnYPos),
                 originAlign: MyGuiDrawAlignEnum.HORISONTAL_CENTER_AND_VERTICAL_BOTTOM,
-                text: new StringBuilder("Save & Exit"),
+                text: new StringBuilder("Save"),
                 onButtonClick: OnSaveButtonClick);
-
             Controls.Add(saveBtn);
+
+            CloseButtonEnabled = true;
         }
 
         private void OnSaveButtonClick(MyGuiControlButton sender)
@@ -66,6 +85,8 @@ namespace SE_RealisticSoundToggle
             _config.EnableRealisticSound = _enableRealistic.IsChecked;
 
             _config.Save(_configPath);
+            SessionComp.UpdateSoundSetting();
+            this.CloseScreen();
         }
     }
 
